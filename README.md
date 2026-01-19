@@ -114,6 +114,8 @@ sunspot [command]
 sunspot compile my_circuit.json
 
 # Generate a proving and verifying key
+# ⚠️ THIS IS UNSAFE!
+# ⚠️ IT PERFORMS GNARK TRUSTED SETUP WITH NO MITIGATION FOR CRYPTOGRAPHIC TOXIC WATE!
 sunspot setup my_circuit.ccs
 
 # Create a Groth16 proof
