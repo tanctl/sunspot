@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"os"
 	"strconv"
+	expression "sunspot/go/acir/expression"
 	hdr "sunspot/go/acir/header"
 	shr "sunspot/go/acir/shared"
 
@@ -30,10 +31,9 @@ type ACIR[T shr.ACIRField, E constraint.Element] struct {
 	Program             Program[T, E]               `json:"program"`
 	DebugSymbols        string                      `json:"debug_symbols"`
 	FileMap             map[string]hdr.ACIRFileData `json:"file_map"`
+	ExpressionWidth     expression.ExpressionWidth  `json:"expression_width"`
 	WitnessTree         *btree.BTree                `json:"-"`
 	ConstantWitnessTree *btree.BTree                `json:"-"`
-	Names               []string                    `json:"names"`
-	BrilligNames        []string                    `json:"brillig_names"`
 }
 
 // Loads ACIR from disk and creates representation in memory
@@ -126,29 +126,18 @@ func (a *ACIR[T, E]) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("missing or invalid file_map field in ACIR")
 	}
 
-	if names, ok := raw["names"].([]interface{}); ok {
-		for _, name := range names {
-			if str, ok := name.(string); ok {
-				a.Names = append(a.Names, str)
-			} else {
-				return fmt.Errorf("invalid name in names array: %v", name)
-			}
+	// 2. Now you can treat the value as bytes
+	if ewVal, ok := raw["expression_width"]; ok {
+		data, err := json.Marshal(ewVal)
+		if err != nil {
+			return fmt.Errorf("error marshalling expression_width: %w", err)
 		}
-	} else {
-		return fmt.Errorf("missing or invalid names field in ACIR")
+
+		if err := json.Unmarshal(data, &a.ExpressionWidth); err != nil {
+			return fmt.Errorf("error unmarshalling ACIR ABI (expression_width): %w", err)
+		}
 	}
 
-	if brilligNames, ok := raw["brillig_names"].([]interface{}); ok {
-		for _, name := range brilligNames {
-			if str, ok := name.(string); ok {
-				a.BrilligNames = append(a.BrilligNames, str)
-			} else {
-				return fmt.Errorf("invalid name in brillig_names array: %v", name)
-			}
-		}
-	} else {
-		return fmt.Errorf("missing or invalid brillig_names field in ACIR")
-	}
 	return nil
 }
 
