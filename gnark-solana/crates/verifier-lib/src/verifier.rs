@@ -6,16 +6,14 @@ use crate::{
     commitments::{batch_verify_pedersen, get_challenge},
     error::GnarkError,
     proof::GnarkProof,
+    syscalls::{alt_bn128_addition, alt_bn128_multiplication, alt_bn128_pairing},
     vk::GnarkVerifyingkey,
     witness::GnarkWitness,
 };
 
 use ark_ff::PrimeField;
 
-use solana_bn254::{
-    prelude::{alt_bn128_g1_addition_be, alt_bn128_g1_multiplication_be, alt_bn128_pairing_be},
-    AltBn128Error,
-};
+use solana_bn254::AltBn128Error;
 use std::ops::Neg;
 
 /// A verifier for Gnark-generated groth16 proofs
@@ -109,7 +107,7 @@ impl<const NR_INPUTS: usize> GnarkVerifier<'_, NR_INPUTS> {
         ]
         .concat();
 
-        let pairing_res = alt_bn128_pairing_be(pairing_input.as_slice())
+        let pairing_res = alt_bn128_pairing(pairing_input.as_slice())
             .map_err(|_| GnarkError::ProofVerificationFailed)?;
 
         // The alt_bn128_pairing function returns 1 if the pairing results in unity
@@ -155,23 +153,28 @@ impl<const NR_INPUTS: usize> GnarkVerifier<'_, NR_INPUTS> {
         let mut prepared_public_inputs = self.verifyingkey.k[0];
 
         for (i, input) in public_inputs.iter().enumerate() {
-            let mul_res = alt_bn128_g1_multiplication_be(
-                &[&self.verifyingkey.k[i + 1][..], &input[..]].concat(),
-            )
-            .map_err(|_| GnarkError::PreparingInputsG1MulFailed)?;
-            prepared_public_inputs =
-                alt_bn128_g1_addition_be(&[&mul_res[..], &prepared_public_inputs[..]].concat())
-                    .map_err(|_| GnarkError::PreparingInputsG1AdditionFailed)?[..]
-                    .try_into()
-                    .map_err(|_| GnarkError::PreparingInputsG1AdditionFailed)?;
+            // Avoid per-iteration heap allocations: build syscall inputs on the stack.
+            let mut mul_input = [0u8; 96];
+            mul_input[..64].copy_from_slice(&self.verifyingkey.k[i + 1]);
+            mul_input[64..96].copy_from_slice(input);
+            let mul_res =
+                alt_bn128_multiplication(&mul_input).map_err(|_| GnarkError::PreparingInputsG1MulFailed)?;
+
+            let mut add_input = [0u8; 128];
+            add_input[..64].copy_from_slice(&mul_res);
+            add_input[64..].copy_from_slice(&prepared_public_inputs);
+            let add_res =
+                alt_bn128_addition(&add_input).map_err(|_| GnarkError::PreparingInputsG1AdditionFailed)?;
+            prepared_public_inputs = add_res;
         }
 
         for commitment in proof_commitments.iter() {
-            prepared_public_inputs =
-                alt_bn128_g1_addition_be(&[&commitment[..], &prepared_public_inputs[..]].concat())
-                    .map_err(|_| GnarkError::PreparingInputsG1AdditionFailed)?[..]
-                    .try_into()
-                    .map_err(|_| GnarkError::PreparingInputsG1AdditionFailed)?;
+            let mut add_input = [0u8; 128];
+            add_input[..64].copy_from_slice(commitment);
+            add_input[64..].copy_from_slice(&prepared_public_inputs);
+            let add_res =
+                alt_bn128_addition(&add_input).map_err(|_| GnarkError::PreparingInputsG1AdditionFailed)?;
+            prepared_public_inputs = add_res;
         }
 
         Ok(prepared_public_inputs)
@@ -223,7 +226,7 @@ pub(crate) fn g2_to_bytes(point: &ark_bn254::G2Affine) -> [u8; 128] {
 }
 
 /// Returns -g1 in bytes, using solana system calls
-fn negate_g1(g1_element: [u8; 64]) -> Result<Vec<u8>, AltBn128Error> {
+fn negate_g1(g1_element: [u8; 64]) -> Result<[u8; 64], AltBn128Error> {
     // bytes corresponding to -1 in the bn254 scalr field
     let neg_one: [u8; 32] = [
         48, 100, 78, 114, 225, 49, 160, 41, 184, 80, 69, 182, 129, 129, 88, 93, 40, 51, 232, 72,
@@ -233,7 +236,5 @@ fn negate_g1(g1_element: [u8; 64]) -> Result<Vec<u8>, AltBn128Error> {
     let mut operands = [0u8; 96];
     operands[..64].copy_from_slice(&g1_element[..]);
     operands[64..96].copy_from_slice(&neg_one);
-    let negated_element = alt_bn128_g1_multiplication_be(&operands)?;
-
-    Ok(negated_element)
+    alt_bn128_multiplication(&operands)
 }

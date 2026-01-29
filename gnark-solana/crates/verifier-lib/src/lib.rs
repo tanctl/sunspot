@@ -4,6 +4,7 @@
 mod commitments;
 mod error;
 mod hash;
+mod syscalls;
 pub mod proof;
 pub mod verifier;
 #[cfg(test)]
