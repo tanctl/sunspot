@@ -157,14 +157,14 @@ impl<const NR_INPUTS: usize> GnarkVerifier<'_, NR_INPUTS> {
             let mut mul_input = [0u8; 96];
             mul_input[..64].copy_from_slice(&self.verifyingkey.k[i + 1]);
             mul_input[64..96].copy_from_slice(input);
-            let mul_res =
-                alt_bn128_multiplication(&mul_input).map_err(|_| GnarkError::PreparingInputsG1MulFailed)?;
+            let mul_res = alt_bn128_multiplication(&mul_input)
+                .map_err(|_| GnarkError::PreparingInputsG1MulFailed)?;
 
             let mut add_input = [0u8; 128];
             add_input[..64].copy_from_slice(&mul_res);
             add_input[64..].copy_from_slice(&prepared_public_inputs);
-            let add_res =
-                alt_bn128_addition(&add_input).map_err(|_| GnarkError::PreparingInputsG1AdditionFailed)?;
+            let add_res = alt_bn128_addition(&add_input)
+                .map_err(|_| GnarkError::PreparingInputsG1AdditionFailed)?;
             prepared_public_inputs = add_res;
         }
 
@@ -172,8 +172,8 @@ impl<const NR_INPUTS: usize> GnarkVerifier<'_, NR_INPUTS> {
             let mut add_input = [0u8; 128];
             add_input[..64].copy_from_slice(commitment);
             add_input[64..].copy_from_slice(&prepared_public_inputs);
-            let add_res =
-                alt_bn128_addition(&add_input).map_err(|_| GnarkError::PreparingInputsG1AdditionFailed)?;
+            let add_res = alt_bn128_addition(&add_input)
+                .map_err(|_| GnarkError::PreparingInputsG1AdditionFailed)?;
             prepared_public_inputs = add_res;
         }
 

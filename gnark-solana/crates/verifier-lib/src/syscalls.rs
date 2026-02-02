@@ -7,7 +7,8 @@ use solana_bn254::prelude::{ALT_BN128_ADD, ALT_BN128_MUL, ALT_BN128_PAIRING};
 
 #[cfg(not(target_os = "solana"))]
 use solana_bn254::prelude::{
-    alt_bn128_addition as alt_add, alt_bn128_multiplication as alt_mul, alt_bn128_pairing as alt_pair,
+    alt_bn128_addition as alt_add, alt_bn128_multiplication as alt_mul,
+    alt_bn128_pairing as alt_pair,
 };
 
 const ADD_INPUT_LEN: usize = 128;
@@ -37,7 +38,9 @@ fn syscall(group_op: u64, input: &[u8], output: &mut [u8]) -> Result<(), AltBn12
 }
 
 /// performs an alt_bn128 addn without heap allocation on SBF
-pub(crate) fn alt_bn128_addition(input: &[u8; ADD_INPUT_LEN]) -> Result<[u8; ADD_OUTPUT_LEN], AltBn128Error> {
+pub(crate) fn alt_bn128_addition(
+    input: &[u8; ADD_INPUT_LEN],
+) -> Result<[u8; ADD_OUTPUT_LEN], AltBn128Error> {
     #[cfg(target_os = "solana")]
     {
         let mut out = [0u8; ADD_OUTPUT_LEN];
