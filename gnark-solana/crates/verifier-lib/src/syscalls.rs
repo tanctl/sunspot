@@ -7,8 +7,8 @@ use solana_bn254::prelude::{ALT_BN128_ADD, ALT_BN128_MUL, ALT_BN128_PAIRING};
 
 #[cfg(not(target_os = "solana"))]
 use solana_bn254::prelude::{
-    alt_bn128_addition as alt_add, alt_bn128_multiplication as alt_mul,
-    alt_bn128_pairing as alt_pair,
+    alt_bn128_g1_addition_be as alt_add, alt_bn128_g1_multiplication_be as alt_mul,
+    alt_bn128_pairing_be as alt_pair,
 };
 
 const ADD_INPUT_LEN: usize = 128;
