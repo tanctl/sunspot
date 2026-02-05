@@ -21,7 +21,7 @@ mod tests {
 
         let proof_file =
             File::open("src/test_files/sum_a_b.proof").expect("unable to open proof file");
-        let proof = GnarkProof::parse(proof_file).expect("Unable to parse proof");
+        let proof = GnarkProof::<0>::parse(proof_file).expect("Unable to parse proof");
 
         let pw_file = File::open("src/test_files/sum_a_b.pw").expect("unable to open pw file");
 
@@ -42,7 +42,7 @@ mod tests {
 
         let proof_file =
             File::open("src/test_files/keccak_f1600.proof").expect("unable to open proof file");
-        let proof = GnarkProof::parse(proof_file).expect("Unable to parse proof");
+        let proof = GnarkProof::<1>::parse(proof_file).expect("Unable to parse proof");
 
         let pw_file = File::open("src/test_files/keccak_f1600.pw").expect("unable to open pw file");
 
@@ -63,7 +63,7 @@ mod tests {
         let mut verifier = GnarkVerifier::<'_, NR_INPUTS>::new(&vk);
 
         let proof_file = File::open("src/test_files/xor.proof").expect("unable to open proof file");
-        let proof = GnarkProof::parse(proof_file).expect("Unable to parse proof");
+        let proof = GnarkProof::<1>::parse(proof_file).expect("Unable to parse proof");
 
         let pw_file = File::open("src/test_files/xor.pw").expect("unable to open pw file");
 

@@ -142,7 +142,7 @@ fn read_u64(reader: &mut impl Read) -> io::Result<u64> {
     Ok(u64::from_be_bytes(buf))
 }
 
-fn read_u32(reader: &mut impl Read) -> io::Result<u32> {
+pub(crate) fn read_u32(reader: &mut impl Read) -> io::Result<u32> {
     let mut buf = [0u8; 4];
     reader.read_exact(&mut buf)?;
     Ok(u32::from_be_bytes(buf))

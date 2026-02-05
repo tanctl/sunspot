@@ -44,7 +44,8 @@ pub fn process_instruction(
     let proof_len = instruction_data.len() - (12 + NR_INPUTS * 32);
     let proof_bytes = &instruction_data[..proof_len];
 
-    let proof = GnarkProof::from_bytes(proof_bytes).map_err(|e| {
+    const N_COMMITMENTS: usize = vk::VK.commitment_keys.len();
+    let proof = GnarkProof::<N_COMMITMENTS>::from_bytes(proof_bytes).map_err(|e| {
         msg!("Gnark error: {:?}", e);
         ProgramError::Custom(u32::from(e))
     })?;
