@@ -69,22 +69,23 @@ impl<const NR_INPUTS: usize> GnarkVerifier<'_, NR_INPUTS> {
         public_witness: GnarkWitness<NR_INPUTS>,
     ) -> Result<(), GnarkError> {
         let mut public_witness_vec = public_witness.entries.to_vec();
+        let commitments = proof.commitments.as_slice();
         if !self.verifyingkey.commitment_keys.is_empty() {
             let challenge = get_challenge::<NR_INPUTS>(
                 self.verifyingkey.public_and_commitment_committed,
-                proof.commitments,
+                commitments,
                 &mut public_witness_vec,
             )?;
 
             batch_verify_pedersen(
                 self.verifyingkey.commitment_keys,
-                proof.commitments,
+                commitments,
                 &proof.commitment_pok,
                 challenge,
             )?;
         }
 
-        let prepared_public_inputs = self.prepare_inputs(&public_witness_vec, proof.commitments)?;
+        let prepared_public_inputs = self.prepare_inputs(&public_witness_vec, commitments)?;
         let vk_alpha_neg = negate_g1(self.verifyingkey.alpha_g1)?;
         let vk_gamma_neg = g2_from_bytes(&self.verifyingkey.gamma_g2).neg();
         let vk_delta_neg = g2_from_bytes(&self.verifyingkey.delta_g2).neg();

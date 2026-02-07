@@ -5,7 +5,7 @@ use crate::{error::GnarkError, vk::read_vk_ic};
 
 /// The Gnark elliptic curve proof elements.
 /// Notation follows Figure 4. in DIZK paper <https://eprint.iacr.org/2018/691.pdf>
-pub struct GnarkProof<'a> {
+pub struct GnarkProof {
     /// G1 element
     pub ar: [u8; 64],
     /// G2 element
@@ -13,12 +13,12 @@ pub struct GnarkProof<'a> {
     /// G1 element
     pub krs: [u8; 64],
     /// Pedersen commitments a la <https://eprint.iacr.org/2022/1072>
-    pub commitments: &'a [[u8; 64]],
+    pub commitments: Vec<[u8; 64]>,
     /// Batched proof of knowledge of the above commitments
     pub commitment_pok: [u8; 64],
 }
 
-impl GnarkProof<'_> {
+impl GnarkProof {
     /// Parses the Gnark proof from a reader.
     pub fn parse<R: Read>(mut reader: R) -> io::Result<Self> {
         let mut proof_a = [0u8; 64];
@@ -31,7 +31,7 @@ impl GnarkProof<'_> {
         reader.read_exact(&mut proof_c)?;
 
         let commitments_vec = read_vk_ic(&mut reader)?;
-        let commitments: &'static [[u8; 64]] = Box::leak(commitments_vec.into_boxed_slice());
+        let commitments = commitments_vec;
 
         let mut commitment_pok = [0u8; 64];
         reader.read_exact(&mut commitment_pok)?;
@@ -84,7 +84,7 @@ impl GnarkProof<'_> {
             commitments_vec.push(c);
         }
 
-        let commitments: &'static [[u8; 64]] = Box::leak(commitments_vec.into_boxed_slice());
+        let commitments = commitments_vec;
 
         // Parse commitment_pok
         let mut commitment_pok = [0u8; 64];
