@@ -63,9 +63,9 @@ impl<const NR_INPUTS: usize> GnarkVerifier<'_, NR_INPUTS> {
     ///
     /// The proof is accepted if and only if the above product of pairings equals
     /// the identity element in the target group.
-    pub fn verify(
+    pub fn verify<const N_COMMITMENTS: usize>(
         &mut self,
-        proof: GnarkProof,
+        proof: GnarkProof<N_COMMITMENTS>,
         public_witness: GnarkWitness<NR_INPUTS>,
     ) -> Result<(), GnarkError> {
         let mut public_witness_vec = public_witness.entries.to_vec();

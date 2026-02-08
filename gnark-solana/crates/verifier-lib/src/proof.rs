@@ -1,11 +1,11 @@
 //! Provides utilities for parsing Gnark-generated proofs
 use std::io::{self, Read};
 
-use crate::{error::GnarkError, vk::read_vk_ic};
+use crate::{error::GnarkError, vk::read_u32};
 
 /// The Gnark elliptic curve proof elements.
 /// Notation follows Figure 4. in DIZK paper <https://eprint.iacr.org/2018/691.pdf>
-pub struct GnarkProof {
+pub struct GnarkProof<const N_COMMITMENTS: usize> {
     /// G1 element
     pub ar: [u8; 64],
     /// G2 element
@@ -18,7 +18,7 @@ pub struct GnarkProof {
     pub commitment_pok: [u8; 64],
 }
 
-impl GnarkProof {
+impl<const N_COMMITMENTS: usize> GnarkProof<N_COMMITMENTS> {
     /// Parses the Gnark proof from a reader.
     pub fn parse<R: Read>(mut reader: R) -> io::Result<Self> {
         let mut proof_a = [0u8; 64];
@@ -30,8 +30,8 @@ impl GnarkProof {
         let mut proof_c = [0u8; 64];
         reader.read_exact(&mut proof_c)?;
 
-        let commitments_vec = read_vk_ic(&mut reader)?;
-        let commitments = commitments_vec;
+        let _encoded_count = read_u32(&mut reader)? as usize;
+        let commitments = read_commitments::<N_COMMITMENTS, _>(&mut reader)?;
 
         let mut commitment_pok = [0u8; 64];
         reader.read_exact(&mut commitment_pok)?;
@@ -64,27 +64,28 @@ impl GnarkProof {
         let mut offset = 256;
 
         // First 4 bytes = number of commitments (u32)
-        let num_commitments = u32::from_be_bytes(
+        if bytes.len() < offset + 4 {
+            return Err(GnarkError::ProofConversionError);
+        }
+        let _encoded_count = u32::from_be_bytes(
             bytes[offset..offset + 4]
                 .try_into()
                 .map_err(|_| GnarkError::ProofConversionError)?,
         ) as usize;
         offset += 4;
 
-        let expected_len = offset + num_commitments * 64 + 64;
+        let expected_len = offset + N_COMMITMENTS * 64 + 64;
         if bytes.len() != expected_len {
             return Err(GnarkError::ProofConversionError);
         }
 
-        let mut commitments_vec = Vec::with_capacity(num_commitments);
-        for _ in 0..num_commitments {
+        let mut commitments = Vec::with_capacity(N_COMMITMENTS);
+        for _ in 0..N_COMMITMENTS {
             let mut c = [0u8; 64];
             c.copy_from_slice(&bytes[offset..offset + 64]);
             offset += 64;
-            commitments_vec.push(c);
+            commitments.push(c);
         }
-
-        let commitments = commitments_vec;
 
         // Parse commitment_pok
         let mut commitment_pok = [0u8; 64];
@@ -100,6 +101,18 @@ impl GnarkProof {
     }
 }
 
+fn read_commitments<const N_COMMITMENTS: usize, R: Read>(
+    reader: &mut R,
+) -> io::Result<Vec<[u8; 64]>> {
+    let mut commitments = Vec::with_capacity(N_COMMITMENTS);
+    let mut buf = [0u8; 64];
+    for _ in 0..N_COMMITMENTS {
+        reader.read_exact(&mut buf)?;
+        commitments.push(buf);
+    }
+    Ok(commitments)
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs::File;
@@ -110,7 +123,7 @@ mod tests {
         let file = File::open("src/test_files/sum_a_b.proof").unwrap();
 
         // Parse the verifying key
-        let proof = super::GnarkProof::parse(file);
+        let proof = super::GnarkProof::<0>::parse(file);
 
         assert!(proof.is_ok())
     }
@@ -121,7 +134,7 @@ mod tests {
         let file = File::open("src/test_files/keccak_f1600.proof").unwrap();
 
         // Parse the verifying key
-        let proof = super::GnarkProof::parse(file);
+        let proof = super::GnarkProof::<1>::parse(file);
         assert!(proof.is_ok())
     }
 
@@ -152,7 +165,7 @@ mod tests {
             50, 32, 186, 121, 113,
         ];
 
-        let proof = super::GnarkProof::from_bytes(&bytes);
+        let proof = super::GnarkProof::<1>::from_bytes(&bytes);
         assert!(proof.is_ok())
     }
 }
